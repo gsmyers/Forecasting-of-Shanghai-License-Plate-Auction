@@ -1,0 +1,155 @@
+---
+title: "Final Project"
+output: html_document
+---
+
+```{r}
+library(forecast)
+data<-read.csv("C:/Users/gsmyers/Desktop/ts class/Shanghai license plate price.csv")
+tsdta <- ts(data, start = c(2002, 1), end = c(2018, 7), frequency=12)
+
+summary(glm(avg.price~.-Date, data = data))
+plot(tsdta[,4])
+```
+
+
+```{r}
+train<-ts(data, start = c(2002, 1), end = c(2016, 12), frequency=12)
+train<- train[,-c(1,5)]
+test <- ts(data[181:199,], start = c(2017, 1), end = c(2018, 7), frequency=12)
+test<- test[,-c(1,5)]
+
+mpe <- numeric(7)
+plot(train[,1])
+plot(train[,2])
+#standard auto arima
+arimatr <- auto.arima(train[,3])
+arimatr
+fcast1 <- forecast(arimatr, h=19)
+
+plot(test[,3])
+plot(fcast1)
+lines(fcast1$mean, col = "red")
+accuracy(fcast1,test[,3])
+
+mpe[1] <- mean((test[,3]-fcast1$mean)/test[,3])
+```
+
+
+```{r}
+#using extra regressors
+arimatr2 <- auto.arima(train[,3], xreg = train[,-3])
+arimatr2
+fcast2 <- forecast(arimatr2, xreg = test[,-3], h=19)
+
+plot(tsdta[,4])
+lines(fcast2$mean, col = "red")
+accuracy(fcast2,test[,3])
+checkresiduals(arimatr2)
+mpe[2]<- mean((test[,3]-fcast2$mean)/test[,3])
+```
+
+
+```{r}
+#using extra regressors with fourier series
+#testing out different values of k
+#k = 3
+arimatr3 <- auto.arima(train[,3], xreg = fourier(train[,-3], K=3))
+arimatr3
+fcast3 <- forecast(arimatr3, xreg = fourier(train[,-3], K=3, h=19))
+
+plot(test[,3])
+lines(fcast3$mean, col = "red")
+accuracy(fcast3,test[,3])
+
+mpe[3]<- mean((test[,3]-fcast3$mean)/test[,3])
+```
+
+```{r}
+#using extra regressors with fourier series
+#testing out different values of k
+#k = 4
+arimatr4 <- auto.arima(train[,3], xreg = fourier(train[,-3], K=4))
+arimatr4
+fcast4 <- forecast(arimatr4, xreg = fourier(train[,-3], K=4, h=19))
+
+plot(test[,3])
+lines(fcast4$mean, col = "red")
+accuracy(fcast4,test[,3])
+
+mpe[4]<- mean((test[,3]-fcast4$mean)/test[,3])
+```
+
+```{r}
+#using extra regressors with fourier series
+#testing out different values of k
+#k = 5
+arimatr5 <- auto.arima(train[,3], xreg = fourier(train[,-3], K=5))
+arimatr5
+fcast5 <- forecast(arimatr5, xreg = fourier(train[,-3], K=5, h=19))
+
+plot(test[,3])
+lines(fcast5$mean, col = "red")
+accuracy(fcast5,test[,3])
+
+mpe[5]<- mean((test[,3]-fcast5$mean)/test[,3])
+```
+
+```{r}
+#using extra regressors with fourier series
+#testing out different values of k
+#k = 6
+arimatr6 <- auto.arima(train[,3], xreg = fourier(train[,-3], K=6))
+arimatr6
+fcast6 <- forecast(arimatr6, xreg = fourier(train[,-3], K=6, h=19))
+
+plot(test[,3])
+lines(fcast6$mean, col = "red")
+accuracy(fcast6,test[,3])
+
+mpe[6]<- mean((test[,3]-fcast6$mean)/test[,3])
+```
+
+
+
+
+
+all errors are very very low but the lowest are the original arima model and the arima model with forecasted xregressors using a fourier expansion of 6
+
+potential improvements, forecast each regressor accurately and then input those as regressors into the model
+
+
+```{r}
+plot(train[,2])
+v <- 6
+
+arimatotlicense <- auto.arima(train[,1], xreg = fourier(train[,-c(2,3)], K=v))
+arimalowpr <- auto.arima(train[,2], xreg = fourier(train[,-c(1,3)], K=v))
+
+arimatotlicensefcast <- forecast(arimatotlicense, xreg = fourier(train[,-c(2,3)], K=v, h=19))
+arimalowprfcast <- forecast(arimalowpr, xreg = fourier(train[,-c(1,3)], K=v, h=19))
+#using the arima model from the second attempt
+#arimatr2
+
+arimatr2 <- auto.arima(train[,3], xreg = train[,c(1,2)])
+arimatr2
+
+
+fcastall <- forecast(arimatr2, xreg = data.frame(arimatotlicensefcast$mean,
+                                         arimalowprfcast$mean), h=19)
+accuracy(fcastall)
+summary(fcastall)
+
+plot(tsdta[,3])
+lines(fcastall$mean, col = 'red')
+checkresiduals(fcastall)
+mpe[7]<- mean((test[,3]-fcastall$mean)/test[,3])
+```
+
+
+
+```{r}
+mpe <- data.frame(mpe)
+rownames(mpe) <- c("standard auto arima","auto arima and known regressors","Fcast Train Fourier 3","Fcast Train Fourier 4","Fcast Train Fourier 5","Fcast Train Fourier 6","Forecasted Xreg")
+abs(mpe)*100
+```
